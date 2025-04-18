@@ -1,46 +1,198 @@
-![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+# UZapi n8n Node
 
-# n8n-nodes-starter
+Custom **n8n** node that integrates with the **UZapi** WhatsApp API, enabling you to start sessions, retrieve status, generate QR codes, and send different message types (text, media, files, Base64, etc.).
 
-This repo contains example nodes to help you get started building your own custom integrations for [n8n](n8n.io). It includes the node linter and other dependencies.
+---
 
-To make your custom node available to the community, you must create it as an npm package, and [submit it to the npm registry](https://docs.npmjs.com/packages-and-modules/contributing-packages-to-the-registry).
+## Table of Contents
+
+1. [Features](#features)
+2. [Architecture](#architecture)
+3. [File Structure](#file-structure)
+4. [Prerequisites](#prerequisites)
+5. [Installation](#installation)
+6. [Credential Configuration](#credential-configuration)
+7. [Node Parameters](#node-parameters)
+8. [Supported Operations](#supported-operations)
+9. [Example Workflow](#example-workflow)
+10. [Development](#development)
+11. [Testing](#testing)
+12. [Contributing](#contributing)
+13. [License](#license)
+
+---
+
+## Features
+
+- **Start Session** – initialise a WhatsApp session in UZapi.
+- **Session Status** – query the current status of a session.
+- **Generate QR** – fetch & pad the QR code returned by the API.
+- **Send Messages** – text, link previews, images, videos, audio, generic files or Base64‑encoded files.
+- **Flexible Input** – choose between providing a URL, local path or binary input for *sendFile64*.
+- **Typed Codebase** – full TypeScript with strict typings for operations & properties.
+- **Modular Design** – helpers & operations separated for easy maintenance.
+
+---
+
+## Architecture
+
+```
+UZapi.node.ts          ← n8n Node wrapper (entry point)
+│
+├─ apiClient.ts        ← Thin HTTP wrapper using n8n helpers
+├─ operations/         ← One file per UZapi endpoint (startSession, sendText …)
+│   └─ index.ts        ← `operationsMap` exports all handlers
+├─ credentials/        ← Credential definition & helpers
+│
+├─ utils/
+│   ├─ properties/     ← Node parameter metadata (no code)
+│   └─ files/          ← Shared helpers (toDataUri, …)
+└─ UZapi.node.json     ← Codex metadata (categories, docs links)
+```
+
+The node delegates every **operation** to an isolated handler in `operations/`.  Each handler receives the **context** (`IExecuteFunctions`), an **ApiClient** instance, and the **item index** – mirroring the functional style of native n8n nodes.
+
+---
+
+## File Structure
+
+| Path                                                   | Purpose                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| `nodes/UZapi/UZapi.node.ts`                            | Main node class implementing `execute()`                    |
+| `nodes/UZapi/apiClient.ts`                             | Reusable wrapper around `helpers.requestWithAuthentication` |
+| `nodes/UZapi/operations/`                              | Endpoint handlers (pure functions)                          |
+| `nodes/UZapi/operations/index.ts`                      | `operationsMap` exports all handlers                        |
+| `nodes/UZapi/credentials/UZapiApi.credentials.ts`      | Credential type (base URL)                                  |
+| `nodes/UZapi/credentials/uzapiCredentialProperties.ts` | Typed credential fields & auth config                       |
+| `nodes/UZapi/utils/properties/`                        | Parameter metadata & option literals                        |
+| `nodes/UZapi/utils/files/fileUtils.ts`                 | Helper to convert local files → `data:` URIs                |
+| `nodes/UZapi/UZapi.node.json`                          | Codex definition (categories + docs)                        |
+
+---
 
 ## Prerequisites
 
-You need the following installed on your development machine:
+- **n8n 1.45 +** (self‑hosted or desktop)
+- Valid **UZapi** account / API token (for protected endpoints)
+- Node .js ≥ 18 + Yarn/PNPM/NPM if you plan to build locally
 
-* [git](https://git-scm.com/downloads)
-* Node.js and pnpm. Minimum version Node 18. You can find instructions on how to install both using nvm (Node Version Manager) for Linux, Mac, and WSL [here](https://github.com/nvm-sh/nvm). For Windows users, refer to Microsoft's guide to [Install NodeJS on Windows](https://docs.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows).
-* Install n8n with:
-  ```
-  pnpm install n8n -g
-  ```
-* Recommended: follow n8n's guide to [set up your development environment](https://docs.n8n.io/integrations/creating-nodes/build/node-development-environment/).
+---
 
-## Using this starter
+## Installation
 
-These are the basic steps for working with the starter. For detailed guidance on creating and publishing nodes, refer to the [documentation](https://docs.n8n.io/integrations/creating-nodes/).
-
-1. [Generate a new repository](https://github.com/n8n-io/n8n-nodes-starter/generate) from this template repository.
-2. Clone your new repo:
+1. Clone the repository into your `custom` directory:
+   ```bash
+   git clone https://github.com/your‑org/n8n‑uzapi‑node.git
+   cd n8n‑uzapi‑node
    ```
-   git clone https://github.com/<your organization>/<your-repo-name>.git
+2. Install dependencies & build:
+   ```bash
+   npm install && npm run build
    ```
-3. Run `pnpm i` to install dependencies.
-4. Open the project in your editor.
-5. Browse the examples in `/nodes` and `/credentials`. Modify the examples, or replace them with your own nodes.
-6. Update the `package.json` to match your details.
-7. Run `pnpm lint` to check for errors or `pnpm lintfix` to automatically fix errors when possible.
-8. Test your node locally. Refer to [Run your node locally](https://docs.n8n.io/integrations/creating-nodes/test/run-node-locally/) for guidance.
-9. Replace this README with documentation for your node. Use the [README_TEMPLATE](README_TEMPLATE.md) to get started.
-10. Update the LICENSE file to use your details.
-11. [Publish](https://docs.npmjs.com/packages-and-modules/contributing-packages-to-the-registry) your package to npm.
+3. Restart n8n – the node **UZapi** should appear under *Miscellaneous*.
 
-## More information
+---
 
-Refer to our [documentation on creating nodes](https://docs.n8n.io/integrations/creating-nodes/) for detailed information on building your own nodes.
+## Credential Configuration
+
+| Field        | Description                                                     |
+| ------------ | --------------------------------------------------------------- |
+| **Base URL** | Root URL of UZapi (default: `https://teste.uzapi.com.br:3333`). |
+
+After saving, reference this credential in your UZapi node instance; authentication headers will be injected automatically.
+
+---
+
+## Node Parameters
+
+| Parameter                        | Type      | Visibility            | Description                                                |
+| -------------------------------- | --------- | --------------------- | ---------------------------------------------------------- |
+| **Operation**                    | *options* | Always                | Which UZapi endpoint to call.                              |
+| **API Token**                    | *string*  | *startSession*        | Token for auth (if required by your plan).                 |
+| **Session Key**                  | *string*  | Most operations       | UUID provided during onboarding.                           |
+| **Session**                      | *string*  | Most operations       | Session ID returned by `/start`.                           |
+| **Número (com DDI)**             | *string*  | Message sends         | Destination in E.164 (e.g. `5511999998888`).               |
+| **Texto**                        | *string*  | *sendtext / sendLink* | Message body.                                              |
+| **URL**                          | *string*  | *sendLink*            | Link to preview.                                           |
+| **Descrição (caption)**          | *string*  | Media & files         | Caption for media / document.                              |
+| **Link (path)**                  | *string*  | Media (URL)           | Public URL or local path (will be sent as‑is).             |
+| **Arquivo (binaryPropertyName)** | *string*  | *sendFile64*          | If not set, the node falls back to the item’s binary data. |
+
+---
+
+## Supported Operations
+
+| Value          | Endpoint                     | Description                                                           |
+| -------------- | ---------------------------- | --------------------------------------------------------------------- |
+| `startSession` | **POST** `/start`            | Create / resume a session.                                            |
+| `getStatus`    | **POST** `/getSessionStatus` | Retrieve current session state.                                       |
+| `generateQr`   | **GET** `/getQrCode`         | Download QR (binary), add padding & output as binary field `qrImage`. |
+| `sendtext`     | **POST** `/sendText`         | Plain text message.                                                   |
+| `sendLink`     | **POST** `/sendLink`         | Text + url with preview.                                              |
+| `sendImage`    | **POST** `/sendImage`        | Image by URL/path with caption.                                       |
+| `sendFile`     | **POST** `/sendFile`         | Document by URL/path with caption.                                    |
+| `sendAudio`    | **POST** `/sendAudio`        | Audio file by URL/path with caption.                                  |
+| `sendVideo`    | **POST** `/sendVideo`        | Video file by URL/path with caption.                                  |
+| `sendFile64`   | **POST** `/sendFile64`       | File via data URI (handles binary → base64 automatically).            |
+
+---
+
+## Example Workflow
+
+```mermaid
+flowchart TD
+    A[Start ➜ Get contact] --> B[UZapi • startSession]
+    B --> C[UZapi • generateQr] -->|Scan code| D[UZapi • getStatus]
+    D --> E{Ready?}
+    E -- yes --> F[UZapi • sendtext]
+    E -- no  --> G[Function ➜ wait & retry]
+---
+
+## Development
+
+```bash
+# Install deps
+npm ci
+
+# Build TS → JS
+npm run build
+
+# Lint
+npm run lint
+```
+
+The project uses **ESLint** with `@typescript-eslint`.  All source lives in `src/` and compiles to `dist/`.
+
+### Releasing a new version
+
+1. Bump `version` in `package.json`.
+2. Run `npm run build`.
+3. Publish the package or copy `dist/` into your n8n instance.
+
+---
+
+## Testing
+
+Right now the node is covered by **integration tests** that hit the UZapi sandbox.  Run them with:
+
+```bash
+npm test
+```
+
+> **Note:** Provide environment variables `UZAPI_BASE_URL`, `UZAPI_SESSION_KEY`, `UZAPI_SESSION` etc. for the tests to interact with a real account.
+
+---
+
+## Contributing
+
+Pull Requests are welcome!  Please open an issue first to discuss your feature or bug‑fix.  Make sure to:
+
+- Follow the existing code style (Prettier + ESLint).
+- Add / update tests.
+- Update this documentation if behaviour changes.
+
+---
 
 ## License
 
-[MIT](https://github.com/n8n-io/n8n-nodes-starter/blob/master/LICENSE.md)
+MIT © 2025 Your Name or Company
