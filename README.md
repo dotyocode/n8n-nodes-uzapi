@@ -137,30 +137,6 @@ After saving, reference this credential in your UZapi node instance; authenticat
 
 ---
 
-## Example Workflow
-
-```mermaid
-flowchart TD
-    A[Start ➜ Get contact] --> B[UZapi • startSession]
-    B --> C[UZapi • generateQr] -->|Scan code| D[UZapi • getStatus]
-    D --> E{Ready?}
-    E -- yes --> F[UZapi • sendtext]
-    E -- no  --> G[Function ➜ wait & retry]
----
-
-## Development
-
-```bash
-# Install deps
-npm ci
-
-# Build TS → JS
-npm run build
-
-# Lint
-npm run lint
-```
-
 The project uses **ESLint** with `@typescript-eslint`.  All source lives in `src/` and compiles to `dist/`.
 
 ### Releasing a new version
@@ -195,4 +171,4 @@ Pull Requests are welcome!  Please open an issue first to discuss your feature 
 
 ## License
 
-MIT © 2025 Your Name or Company
+MIT © 2025 UZapi
